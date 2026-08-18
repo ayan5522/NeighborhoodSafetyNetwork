@@ -1,0 +1,70 @@
+export const theme = {
+  colors: {
+    primary: '#1E3A8A', // Deep Trust Blue
+    primaryLight: '#3B82F6',
+    primaryDark: '#172554',
+    secondary: '#0F766E', // Safety Teal
+    background: '#F8FAFC',
+    surface: '#FFFFFF',
+    textPrimary: '#0F172A',
+    textSecondary: '#64748B',
+    textMuted: '#94A3B8',
+    border: '#E2E8F0',
+    borderFocus: '#3B82F6',
+    success: '#10B981',
+    successLight: '#D1FAE5',
+    warning: '#F59E0B',
+    warningLight: '#FEF3C7',
+    error: '#EF4444',
+    errorLight: '#FEE2E2',
+    inputBg: '#FFFFFF',
+    disabled: '#CBD5E1',
+  },
+  typography: {
+    fontFamily: 'System',
+    sizes: {
+      xs: 12,
+      sm: 14,
+      md: 16,
+      lg: 18,
+      xl: 22,
+      xxl: 28,
+    },
+    weights: {
+      regular: '400',
+      medium: '500',
+      semibold: '600',
+      bold: '700',
+    },
+  },
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+    xxl: 40,
+  },
+  borderRadius: {
+    sm: 6,
+    md: 10,
+    lg: 16,
+    full: 9999,
+  },
+  shadows: {
+    card: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    button: {
+      shadowColor: '#1E3A8A',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+  },
+};

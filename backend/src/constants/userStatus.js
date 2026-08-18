@@ -1,0 +1,12 @@
+const USER_STATUS = Object.freeze({
+  PENDING_VERIFICATION: 'PENDING_VERIFICATION',
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+});
+
+const ALL_STATUSES = Object.values(USER_STATUS);
+
+module.exports = {
+  USER_STATUS,
+  ALL_STATUSES,
+};

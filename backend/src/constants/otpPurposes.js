@@ -1,0 +1,15 @@
+const OTP_PURPOSES = Object.freeze({
+  EMAIL_VERIFICATION: 'EMAIL_VERIFICATION',
+  MOBILE_VERIFICATION: 'MOBILE_VERIFICATION',
+  PASSWORD_RESET: 'PASSWORD_RESET',
+});
+
+const OTP_CHANNELS = Object.freeze({
+  EMAIL: 'EMAIL',
+  SMS: 'SMS',
+});
+
+module.exports = {
+  OTP_PURPOSES,
+  OTP_CHANNELS,
+};
