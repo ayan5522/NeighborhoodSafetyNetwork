@@ -488,6 +488,33 @@ describe('Module 1: User & Authentication Management Comprehensive Test Suite', 
       assert.ok(res.body.message.includes('reset successfully'));
     });
 
+    it('Test 28b: should reject reset password request when reset_token is missing (400)', async () => {
+      const res = await request(app)
+        .post('/api/auth/reset-password')
+        .send({
+          new_password: 'AnotherPassword@2026',
+          confirm_password: 'AnotherPassword@2026',
+        });
+
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(res.body.success, false);
+      assert.ok(res.body.errors.some(e => e.includes('Reset token is required')));
+    });
+
+    it('Test 28c: should reject reset password request with invalid/tampered token (400)', async () => {
+      const res = await request(app)
+        .post('/api/auth/reset-password')
+        .send({
+          reset_token: 'invalid.jwt.reset.token.12345',
+          new_password: 'AnotherPassword@2026',
+          confirm_password: 'AnotherPassword@2026',
+        });
+
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(res.body.success, false);
+      assert.ok(res.body.message.includes('expired or is invalid'));
+    });
+
     it('Test 29: should successfully login using the new password and reject old password', async () => {
       // Old password should fail
       const failRes = await request(app)
@@ -508,6 +535,56 @@ describe('Module 1: User & Authentication Management Comprehensive Test Suite', 
       assert.strictEqual(successRes.status, 200);
       assert.strictEqual(successRes.body.success, true);
       assert.ok(successRes.body.data.token);
+    });
+
+    it('Test 29b: should complete complete forgot password and reset flow via Mobile SMS', async () => {
+      // Cooldown reset for mobile test
+      await db.query("UPDATE otp_verifications SET created_at = NOW() - INTERVAL '70 seconds' WHERE user_id = $1", [registeredUserId]);
+
+      // 1. Request OTP via SMS
+      const forgotRes = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({
+          channel: 'SMS',
+          identifier: testUser.mobile_number,
+        });
+      assert.strictEqual(forgotRes.status, 200);
+      const mobileResetOtp = forgotRes.body.data?.dev_otp;
+      assert.ok(mobileResetOtp);
+
+      // 2. Verify OTP
+      const verifyRes = await request(app)
+        .post('/api/auth/verify-reset-otp')
+        .send({
+          channel: 'SMS',
+          identifier: testUser.mobile_number,
+          otp: mobileResetOtp,
+        });
+      assert.strictEqual(verifyRes.status, 200);
+      assert.ok(verifyRes.body.data.reset_token);
+      const mobileResetToken = verifyRes.body.data.reset_token;
+
+      // 3. Reset password
+      const newerPassword = 'MobileResetPassword@2026';
+      const resetRes = await request(app)
+        .post('/api/auth/reset-password')
+        .send({
+          reset_token: mobileResetToken,
+          new_password: newerPassword,
+          confirm_password: newerPassword,
+        });
+      assert.strictEqual(resetRes.status, 200);
+
+      // 4. Verify login with newly updated password
+      const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: testUser.email,
+          password: newerPassword,
+        });
+      assert.strictEqual(loginRes.status, 200);
+      assert.ok(loginRes.body.data.token);
+      authToken = loginRes.body.data.token;
     });
   });
 

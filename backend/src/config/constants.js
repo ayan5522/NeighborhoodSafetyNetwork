@@ -1,0 +1,28 @@
+module.exports = {
+  ROLES: {
+    RESIDENT: 'resident',
+    MODERATOR: 'moderator',
+    ADMIN: 'admin',
+  },
+  ACCOUNT_STATUS: {
+    PENDING_VERIFICATION: 'PENDING_VERIFICATION',
+    ACTIVE: 'ACTIVE',
+    SUSPENDED: 'SUSPENDED',
+  },
+  OTP_PURPOSES: {
+    EMAIL_VERIFICATION: 'EMAIL_VERIFICATION',
+    MOBILE_VERIFICATION: 'MOBILE_VERIFICATION',
+    PASSWORD_RESET: 'PASSWORD_RESET',
+  },
+  OTP_CHANNELS: {
+    EMAIL: 'EMAIL',
+    SMS: 'SMS',
+  },
+  SECURITY: {
+    BCRYPT_ROUNDS: 10,
+    OTP_EXPIRY_MINUTES: parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10),
+    OTP_MAX_ATTEMPTS: parseInt(process.env.OTP_MAX_ATTEMPTS || '5', 10),
+    OTP_RESEND_COOLDOWN_SECONDS: parseInt(process.env.OTP_RESEND_COOLDOWN_SECONDS || '60', 10),
+    JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
+  },
+};

@@ -16,6 +16,10 @@ describe('Module 2: Location & Neighborhood Management Test Suite', () => {
   const testSuffix = Date.now();
 
   before(async () => {
+    // Isolate location table from other test suites
+    await db.query('DELETE FROM user_locations');
+    await db.query("DELETE FROM users WHERE email LIKE '%loc%' OR mobile_number IN ('+919811111111', '+919822222222', '+919833333333', '9811111111', '9822222222', '9833333333')");
+
     // 1. Register User A (Shivaji Nagar, Ratnagiri)
     const userARes = await request(app)
       .post('/api/auth/register')

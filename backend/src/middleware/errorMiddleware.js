@@ -31,9 +31,12 @@ function globalErrorHandler(err, req, res, next) {
     return apiError(res, 400, 'Malformed JSON payload in request body.');
   }
 
-  // Generic sanitized error response (never leak stack trace or internal SQL details)
-  const message = env.NODE_ENV === 'development' ? err.message : 'An unexpected internal server error occurred.';
-  return apiError(res, 500, message);
+  const statusCode = err.statusCode || err.status || 500;
+  const message = statusCode < 500 || env.NODE_ENV === 'development'
+    ? err.message
+    : 'An unexpected internal server error occurred.';
+
+  return apiError(res, statusCode, message);
 }
 
 module.exports = {

@@ -17,7 +17,7 @@ export default function Input({
   editable = true,
 }) {
   const [isFocused, setIsFocused] = useState(false);
-  const [isPasswordVisible, setIsPasswordVisible] = useState(!secureTextEntry);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   return (
     <View style={styles.container}>
@@ -58,8 +58,10 @@ export default function Input({
             style={styles.eyeButton}
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel={isPasswordVisible ? `Hide ${label || 'password'}` : `Show ${label || 'password'}`}
+            accessibilityRole="button"
           >
-            <Text style={styles.eyeText}>{isPasswordVisible ? 'Hide' : 'Show'}</Text>
+            <Text style={styles.eyeIcon}>{isPasswordVisible ? '🙈' : '👁'}</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -127,13 +129,12 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   eyeButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  eyeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.primaryLight,
+  eyeIcon: {
+    fontSize: 18,
   },
   errorText: {
     fontSize: 12,

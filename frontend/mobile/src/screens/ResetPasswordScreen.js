@@ -15,9 +15,11 @@ import authService from '../services/authService';
 import { theme } from '../styles/theme';
 
 export default function ResetPasswordScreen({ route, navigation }) {
-  const { channel, identifier, otp } = route.params || {};
+  const { resetToken, channel, identifier } = route.params || {};
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -25,6 +27,11 @@ export default function ResetPasswordScreen({ route, navigation }) {
   const handleResetPassword = async () => {
     setErrorMessage('');
     setSuccessMessage('');
+
+    if (!resetToken) {
+      setErrorMessage('Reset token is missing or expired. Please request a new verification code.');
+      return;
+    }
 
     if (!newPassword || !confirmPassword) {
       setErrorMessage('Please fill in both password fields.');
@@ -37,18 +44,18 @@ export default function ResetPasswordScreen({ route, navigation }) {
     }
 
     if (newPassword.length < 8) {
-      setErrorMessage('Password must be at least 8 characters long with a letter and a number.');
+      setErrorMessage('Password must be at least 8 characters long.');
       return;
     }
 
     setLoading(true);
     try {
       await authService.resetPassword({
-        channel,
-        identifier,
-        otp,
+        resetToken,
         newPassword,
         confirmPassword,
+        channel,
+        identifier,
       });
 
       setSuccessMessage('Password reset successfully! Redirecting to sign in...');
@@ -56,7 +63,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
         navigation.navigate('Login');
       }, 1500);
     } catch (err) {
-      setErrorMessage(err.message);
+      setErrorMessage(err.message || 'Failed to reset password.');
     } finally {
       setLoading(false);
     }
@@ -87,30 +94,56 @@ export default function ResetPasswordScreen({ route, navigation }) {
           ) : null}
 
           <View style={styles.form}>
+            {/* New Password Field with Show/Hide Eye Button */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>New Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Min. 8 characters (letter & number)"
-                placeholderTextColor={theme.colors.textMuted}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Min. 8 characters"
+                  placeholderTextColor={theme.colors.textMuted}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showNewPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowNewPassword((prev) => !prev)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityLabel={showNewPassword ? 'Hide new password' : 'Show new password'}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.eyeIcon}>{showNewPassword ? '🙈' : '👁'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
+            {/* Confirm New Password Field with Show/Hide Eye Button */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Confirm New Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Re-enter new password"
-                placeholderTextColor={theme.colors.textMuted}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Re-enter new password"
+                  placeholderTextColor={theme.colors.textMuted}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowConfirmPassword((prev) => !prev)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityLabel={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.eyeIcon}>{showConfirmPassword ? '🙈' : '👁'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
@@ -125,6 +158,12 @@ export default function ResetPasswordScreen({ route, navigation }) {
                 <Text style={styles.buttonText}>Reset Password</Text>
               )}
             </TouchableOpacity>
+
+            <View style={styles.footer}>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.backLink}>← Back to Sign In</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -176,15 +215,28 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: 6,
   },
-  input: {
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: theme.colors.inputBg,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.md,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+  },
+  passwordInput: {
+    flex: 1,
     paddingVertical: 12,
     fontSize: theme.typography.sizes.md,
     color: theme.colors.textPrimary,
+  },
+  eyeButton: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  eyeIcon: {
+    fontSize: 18,
   },
   primaryButton: {
     backgroundColor: theme.colors.primary,
@@ -225,6 +277,16 @@ const styles = StyleSheet.create({
   successText: {
     color: '#065F46',
     fontSize: theme.typography.sizes.sm,
+    textAlign: 'center',
     fontWeight: '600',
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+  },
+  backLink: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.primaryLight,
+    fontWeight: '700',
   },
 });

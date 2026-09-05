@@ -18,7 +18,37 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#1e3a8a"
-      }
-    }
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "READ_CONTACTS"
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Neighborhood Safety Network to use your location to report local incidents and show nearby alerts."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Neighborhood Safety Network to access your photos to attach evidence to incident reports.",
+          "cameraPermission": "Allow Neighborhood Safety Network to access your camera to take real-time photos of safety incidents."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Neighborhood Safety Network to access your contacts to easily select your emergency contact."
+        }
+      ]
+    ]
   }
 }

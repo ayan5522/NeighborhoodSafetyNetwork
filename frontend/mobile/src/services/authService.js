@@ -83,7 +83,7 @@ export const authService = {
   },
 
   /**
-   * Verify Reset OTP
+   * Verify Reset OTP and obtain secure reset token
    */
   async verifyResetOtp({ channel, identifier, otp }) {
     const response = await apiClient.post('/auth/verify-reset-otp', {
@@ -95,15 +95,19 @@ export const authService = {
   },
 
   /**
-   * Reset Password
+   * Reset Password using secure reset token
    */
-  async resetPassword({ channel, identifier, otp, newPassword, confirmPassword }) {
+  async resetPassword({ resetToken, newPassword, confirmPassword, channel, identifier, otp }) {
     const response = await apiClient.post('/auth/reset-password', {
+      reset_token: resetToken,
+      resetToken,
+      new_password: newPassword,
+      newPassword,
+      confirm_password: confirmPassword,
+      confirmPassword,
       channel,
       identifier,
       otp,
-      new_password: newPassword,
-      confirm_password: confirmPassword,
     });
     return response.data;
   },

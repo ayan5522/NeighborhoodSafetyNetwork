@@ -40,13 +40,16 @@ function validatePasswordStrength(password) {
 
 function validateRegisterInput(data) {
   const errors = [];
-  const { full_name, email, mobile_number, password, confirm_password } = data || {};
+  const { full_name, fullName, email, mobile_number, mobileNumber, password, confirm_password, confirmPassword } = data || {};
+  const name = full_name || fullName;
+  const mobile = mobile_number || mobileNumber;
+  const confirmPwd = confirm_password || confirmPassword;
 
   // 1. Full Name
-  if (!full_name || typeof full_name !== 'string' || !full_name.trim()) {
+  if (!name || typeof name !== 'string' || !name.trim()) {
     errors.push('Full name is required.');
   } else {
-    const trimmed = full_name.trim();
+    const trimmed = name.trim();
     if (trimmed.length < 2 || trimmed.length > 100) {
       errors.push('Full name must be between 2 and 100 characters.');
     } else if (!NAME_REGEX.test(trimmed)) {
@@ -65,9 +68,9 @@ function validateRegisterInput(data) {
   }
 
   // 3. Mobile Number
-  if (!mobile_number || typeof mobile_number !== 'string' || !mobile_number.trim()) {
+  if (!mobile || typeof mobile !== 'string' || !mobile.trim()) {
     errors.push('Mobile number is required.');
-  } else if (!isValidIndianMobile(mobile_number)) {
+  } else if (!isValidIndianMobile(mobile)) {
     errors.push('Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).');
   }
 
@@ -78,9 +81,9 @@ function validateRegisterInput(data) {
   }
 
   // 5. Confirm Password
-  if (!confirm_password || typeof confirm_password !== 'string') {
+  if (!confirmPwd || typeof confirmPwd !== 'string') {
     errors.push('Please confirm your password.');
-  } else if (password !== confirm_password) {
+  } else if (password !== confirmPwd) {
     errors.push('Passwords do not match.');
   }
 
@@ -88,9 +91,9 @@ function validateRegisterInput(data) {
     isValid: errors.length === 0,
     errors,
     sanitized: errors.length === 0 ? {
-      full_name: full_name.trim(),
+      full_name: name.trim(),
       email: email.trim().toLowerCase(),
-      mobile_number: normalizeIndianMobile(mobile_number),
+      mobile_number: normalizeIndianMobile(mobile),
       password,
     } : null,
   };
@@ -122,9 +125,11 @@ function validateLoginInput(data) {
 
 function validateVerifyOTPInput(data) {
   const errors = [];
-  const { user_id, email, mobile_number, otp } = data || {};
+  const { user_id, userId, email, mobile_number, mobileNumber, otp } = data || {};
+  const uId = user_id || userId;
+  const mobile = mobile_number || mobileNumber;
 
-  if (!user_id && !email && !mobile_number) {
+  if (!uId && !email && !mobile) {
     errors.push('User identifier (user_id, email, or mobile_number) is required.');
   }
 
@@ -136,9 +141,9 @@ function validateVerifyOTPInput(data) {
     isValid: errors.length === 0,
     errors,
     sanitized: errors.length === 0 ? {
-      user_id: user_id ? String(user_id).trim() : undefined,
+      user_id: uId ? String(uId).trim() : undefined,
       email: email ? String(email).trim().toLowerCase() : undefined,
-      mobile_number: mobile_number ? normalizeIndianMobile(mobile_number) : undefined,
+      mobile_number: mobile ? normalizeIndianMobile(mobile) : undefined,
       otp: otp.trim(),
     } : null,
   };
@@ -176,18 +181,21 @@ function validateForgotPasswordInput(data) {
 
 function validateResetPasswordInput(data) {
   const errors = [];
-  const { reset_token, new_password, confirm_password } = data || {};
+  const { reset_token, resetToken, new_password, newPassword, confirm_password, confirmPassword } = data || {};
+  const token = reset_token || resetToken;
+  const pwd = new_password || newPassword;
+  const confirmPwd = confirm_password || confirmPassword;
 
-  if (!reset_token || typeof reset_token !== 'string' || !reset_token.trim()) {
+  if (!token || typeof token !== 'string' || !token.trim()) {
     errors.push('Reset token is required.');
   }
 
-  const pwdError = validatePasswordStrength(new_password);
+  const pwdError = validatePasswordStrength(pwd);
   if (pwdError) {
     errors.push(pwdError);
   }
 
-  if (!confirm_password || new_password !== confirm_password) {
+  if (!confirmPwd || pwd !== confirmPwd) {
     errors.push('Passwords do not match.');
   }
 
@@ -195,25 +203,26 @@ function validateResetPasswordInput(data) {
     isValid: errors.length === 0,
     errors,
     sanitized: errors.length === 0 ? {
-      reset_token: reset_token.trim(),
-      new_password,
+      reset_token: token.trim(),
+      new_password: pwd,
     } : null,
   };
 }
 
 function validateUpdateProfileInput(data) {
   const errors = [];
-  const { full_name, role, status, email, mobile_number, email_verified, mobile_verified } = data || {};
+  const { full_name, fullName, role, status, email, mobile_number, email_verified, mobile_verified } = data || {};
+  const name = full_name || fullName;
 
   // Reject attempts to update protected fields
   if (role !== undefined || status !== undefined || email !== undefined || mobile_number !== undefined || email_verified !== undefined || mobile_verified !== undefined) {
     errors.push('You cannot modify protected fields (role, status, email, mobile_number, verification flags) directly.');
   }
 
-  if (!full_name || typeof full_name !== 'string' || !full_name.trim()) {
+  if (!name || typeof name !== 'string' || !name.trim()) {
     errors.push('Full name is required.');
   } else {
-    const trimmed = full_name.trim();
+    const trimmed = name.trim();
     if (trimmed.length < 2 || trimmed.length > 100) {
       errors.push('Full name must be between 2 and 100 characters.');
     } else if (!NAME_REGEX.test(trimmed)) {
@@ -225,7 +234,7 @@ function validateUpdateProfileInput(data) {
     isValid: errors.length === 0,
     errors,
     sanitized: errors.length === 0 ? {
-      full_name: full_name.trim(),
+      full_name: name.trim(),
     } : null,
   };
 }

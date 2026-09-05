@@ -2,6 +2,10 @@ const express = require('express');
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const locationRoutes = require('./locationRoutes');
+const incidentRoutes = require('./incidentRoutes');
+const alertRoutes = require('./alertRoutes');
+const emergencyContactRoutes = require('./emergencyContactRoutes');
+const sosRoutes = require('./sosRoutes');
 const devRoutes = require('./devRoutes');
 const env = require('../config/env');
 
@@ -11,6 +15,10 @@ const router = express.Router();
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/location', locationRoutes);
+router.use('/incidents', incidentRoutes);
+router.use('/alerts', alertRoutes);
+router.use('/emergency-contacts', emergencyContactRoutes);
+router.use('/sos', sosRoutes);
 
 // Development routes (enabled in non-production environments)
 if (env.NODE_ENV !== 'production') {

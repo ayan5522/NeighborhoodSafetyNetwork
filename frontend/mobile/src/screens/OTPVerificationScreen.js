@@ -42,17 +42,24 @@ export default function OTPVerificationScreen({ route, navigation }) {
 
     setLoading(true);
     try {
-      await authService.verifyResetOtp({
+      const res = await authService.verifyResetOtp({
         channel,
         identifier,
         otp: otp.trim(),
       });
 
-      // Pass verified OTP along to the reset password screen
+      // Extract secure single-use reset token from response
+      const resetToken = res?.data?.reset_token || res?.data?.resetToken || res?.reset_token || res?.resetToken;
+
+      if (!resetToken) {
+        throw new Error('Failed to obtain password reset authorization. Please request a new code.');
+      }
+
+      // Securely pass reset token to ResetPassword screen in temporary navigation params
       navigation.navigate('ResetPassword', {
+        resetToken,
         channel,
         identifier,
-        otp: otp.trim(),
       });
     } catch (err) {
       setErrorMessage(err.message);

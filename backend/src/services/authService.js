@@ -483,14 +483,15 @@ class AuthService {
   /**
    * Reset user password using the verified reset_token or direct OTP verification.
    */
-  async resetPassword({ reset_token, channel, identifier, otp, new_password, newPassword }) {
-    const passwordToSet = new_password || newPassword;
+  async resetPassword({ reset_token, resetToken, channel, identifier, otp, new_password, newPassword, password }) {
+    const tokenToUse = reset_token || resetToken;
+    const passwordToSet = new_password || newPassword || password;
     let userId;
 
-    if (reset_token) {
+    if (tokenToUse) {
       let decoded;
       try {
-        decoded = verifyToken(reset_token);
+        decoded = verifyToken(tokenToUse);
         userId = decoded.id;
       } catch (err) {
         return {

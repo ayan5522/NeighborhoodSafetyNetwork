@@ -1,0 +1,13 @@
+const INCIDENT_SEVERITIES = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+};
+
+const VALID_SEVERITIES = Object.values(INCIDENT_SEVERITIES);
+
+module.exports = {
+  INCIDENT_SEVERITIES,
+  VALID_SEVERITIES,
+};
