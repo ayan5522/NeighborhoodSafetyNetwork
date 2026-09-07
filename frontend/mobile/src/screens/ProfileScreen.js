@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
+import BottomNavBar from '../components/BottomNavBar';
 import { theme } from '../styles/theme';
 
 export default function ProfileScreen({ navigation }) {
@@ -196,6 +197,9 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.logoutButtonText}>Sign Out of Session</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNavBar navigation={navigation} activeTab="Profile" />
     </SafeAreaView>
   );
 }

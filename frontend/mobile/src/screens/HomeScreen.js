@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import alertService from '../services/alertService';
+import BottomNavBar from '../components/BottomNavBar';
 import { theme } from '../styles/theme';
 
 export default function HomeScreen({ navigation }) {
@@ -208,6 +209,9 @@ export default function HomeScreen({ navigation }) {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNavBar navigation={navigation} activeTab="Home" />
     </SafeAreaView>
   );
 }

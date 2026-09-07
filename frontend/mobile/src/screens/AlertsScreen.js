@@ -10,6 +10,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import alertService from '../services/alertService';
+import BottomNavBar from '../components/BottomNavBar';
 import { theme } from '../styles/theme';
 
 const PRIORITY_THEMES = {
@@ -192,6 +193,9 @@ export default function AlertsScreen({ navigation }) {
           }
         />
       )}
+
+      {/* Bottom Navigation Bar */}
+      <BottomNavBar navigation={navigation} activeTab="Alerts" />
     </SafeAreaView>
   );
 }

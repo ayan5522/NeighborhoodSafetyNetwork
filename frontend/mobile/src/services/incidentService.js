@@ -90,6 +90,39 @@ export const incidentService = {
   },
 
   /**
+   * Fetch active nearby incidents within radius for map display.
+   */
+  async getNearbyIncidents({ latitude, longitude, radius, category, severity } = {}) {
+    const params = {};
+    if (latitude !== undefined && latitude !== null) params.latitude = latitude;
+    if (longitude !== undefined && longitude !== null) params.longitude = longitude;
+    if (radius !== undefined && radius !== null) params.radius = radius;
+    if (category) params.category = category;
+    if (severity) params.severity = severity;
+
+    const response = await apiClient.get('/incidents/nearby', { params });
+    return response.data?.data || response.data;
+  },
+
+  /**
+   * Get community verification summary and status for an incident.
+   */
+  async getIncidentVerifications(incidentId) {
+    const response = await apiClient.get(`/incidents/${incidentId}/verifications`);
+    return response.data?.data || response.data;
+  },
+
+  /**
+   * Submit a verification (CONFIRM or DISPUTE) on an incident report.
+   */
+  async verifyIncident(incidentId, verificationType) {
+    const response = await apiClient.post(`/incidents/${incidentId}/verify`, {
+      verification_type: verificationType,
+    });
+    return response.data?.data || response.data;
+  },
+
+  /**
    * Helper to construct full public image URL from server relative path.
    */
   getImageUrl(relativePath) {

@@ -118,6 +118,31 @@ class IncidentController {
       next(err);
     }
   }
+
+  /**
+   * Get active nearby incidents within a radius for Neighborhood Map display.
+   */
+  async getNearbyIncidents(req, res, next) {
+    try {
+      const { latitude, longitude, radius, category, severity } = req.query;
+      const result = await incidentService.getNearbyActiveIncidents({
+        userId: req.user.id,
+        latitude,
+        longitude,
+        radiusMeters: radius,
+        category,
+        severity,
+      });
+
+      if (!result.success) {
+        return apiError(res, result.statusCode, result.message);
+      }
+
+      return apiSuccess(res, result.statusCode, result.message, result.data);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new IncidentController();

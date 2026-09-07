@@ -89,7 +89,7 @@ export default function MyReportsScreen({ navigation }) {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() => navigation.navigate('IncidentDetails', { id: item.id })}
+        onPress={() => navigation.navigate('IncidentDetails', { id: item.id, incident: item })}
         activeOpacity={0.7}
       >
         <View style={styles.cardHeader}>

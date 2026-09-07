@@ -334,6 +334,114 @@ class IncidentService {
       data: this.formatIncident(updateRes.rows[0]),
     };
   }
+
+  /**
+   * Get active nearby safety incidents within a radius using PostGIS.
+   * Strictly filters for active incidents (PENDING, ACTIVE) - excludes CANCELLED and RESOLVED.
+   * Enforces privacy by excluding reporter credentials, names, emails, phone numbers.
+   * Left joins alerts to link alert_id if one was issued to this recipient user.
+   */
+  async getNearbyActiveIncidents({ userId, latitude, longitude, radiusMeters = 2000, category, severity }) {
+    let centerLat = latitude !== undefined && latitude !== null ? Number(latitude) : null;
+    let centerLng = longitude !== undefined && longitude !== null ? Number(longitude) : null;
+
+    if (centerLat === null || centerLng === null) {
+      const userLoc = await db.query(
+        'SELECT latitude, longitude FROM user_locations WHERE user_id = $1::uuid',
+        [userId]
+      );
+      if (userLoc.rows.length === 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'Current coordinates required or user location must be saved first.',
+        };
+      }
+      centerLat = parseFloat(userLoc.rows[0].latitude);
+      centerLng = parseFloat(userLoc.rows[0].longitude);
+    }
+
+    const radius = Number(radiusMeters) || 2000;
+    const queryParams = [centerLat, centerLng, userId, radius];
+    const filterClauses = [];
+
+    if (category) {
+      queryParams.push(category);
+      filterClauses.push(`AND i.category = $${queryParams.length}`);
+    }
+
+    if (severity) {
+      queryParams.push(severity);
+      filterClauses.push(`AND i.severity = $${queryParams.length}`);
+    }
+
+    const query = `
+      SELECT 
+        i.id,
+        i.category,
+        i.title,
+        i.description,
+        i.severity,
+        i.status,
+        i.latitude,
+        i.longitude,
+        i.image_url,
+        i.neighborhood_name,
+        i.locality,
+        i.city,
+        i.created_at,
+        i.updated_at,
+        ROUND(ST_Distance(i.geom, ST_SetSRID(ST_MakePoint($2::double precision, $1::double precision), 4326)::geography)) AS distance_meters,
+        a.id AS alert_id
+      FROM incidents i
+      LEFT JOIN alerts a ON a.incident_id = i.id AND a.recipient_user_id = $3::uuid
+      WHERE i.status IN ('PENDING', 'ACTIVE')
+        AND ST_DWithin(
+          i.geom,
+          ST_SetSRID(ST_MakePoint($2::double precision, $1::double precision), 4326)::geography,
+          $4::double precision
+        )
+        ${filterClauses.join(' ')}
+      ORDER BY distance_meters ASC
+    `;
+
+    const result = await db.query(query, queryParams);
+
+    const formattedIncidents = result.rows.map((row) => ({
+      id: row.id,
+      category: row.category,
+      title: row.title,
+      description: row.description,
+      severity: row.severity,
+      status: row.status,
+      latitude: parseFloat(row.latitude),
+      longitude: parseFloat(row.longitude),
+      image_url: row.image_url || null,
+      neighborhood_name: row.neighborhood_name || null,
+      locality: row.locality || null,
+      city: row.city || null,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      distance_meters: parseFloat(row.distance_meters),
+      approximate_distance_meters: Math.round(parseFloat(row.distance_meters) / 50) * 50,
+      alert_id: row.alert_id || null,
+    }));
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'Nearby active incidents retrieved successfully.',
+      data: {
+        radius_meters: radius,
+        center: {
+          latitude: centerLat,
+          longitude: centerLng,
+        },
+        total: formattedIncidents.length,
+        incidents: formattedIncidents,
+      },
+    };
+  }
 }
 
 module.exports = new IncidentService();

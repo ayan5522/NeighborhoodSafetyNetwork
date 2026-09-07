@@ -151,7 +151,61 @@ function validateUpdateIncidentInput(data) {
   };
 }
 
+/**
+ * Validate query parameters for nearby incidents search.
+ */
+function validateNearbyIncidentsQuery(query) {
+  const errors = [];
+  const { latitude, longitude, radius, category, severity } = query || {};
+
+  let lat = null;
+  let lng = null;
+  let rad = 2000;
+
+  if (latitude !== undefined && latitude !== null && latitude !== '') {
+    lat = Number(latitude);
+    if (isNaN(lat) || lat < -90.0 || lat > 90.0) {
+      errors.push('Latitude must be a valid number between -90 and 90 degrees.');
+    }
+  }
+
+  if (longitude !== undefined && longitude !== null && longitude !== '') {
+    lng = Number(longitude);
+    if (isNaN(lng) || lng < -180.0 || lng > 180.0) {
+      errors.push('Longitude must be a valid number between -180 and 180 degrees.');
+    }
+  }
+
+  if (radius !== undefined && radius !== null && radius !== '') {
+    rad = Number(radius);
+    if (isNaN(rad) || rad < 100 || rad > 50000) {
+      errors.push('Radius must be a number between 100 and 50,000 meters.');
+    }
+  }
+
+  if (category && !VALID_CATEGORIES.includes(String(category).trim().toUpperCase())) {
+    errors.push(`Invalid incident category filter. Allowed: ${VALID_CATEGORIES.join(', ')}.`);
+  }
+
+  if (severity && !VALID_SEVERITIES.includes(String(severity).trim().toUpperCase())) {
+    errors.push(`Invalid severity filter. Allowed: ${VALID_SEVERITIES.join(', ')}.`);
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    sanitized: errors.length === 0 ? {
+      latitude: lat,
+      longitude: lng,
+      radius: rad,
+      category: category ? String(category).trim().toUpperCase() : undefined,
+      severity: severity ? String(severity).trim().toUpperCase() : undefined,
+    } : null,
+  };
+}
+
 module.exports = {
   validateCreateIncidentInput,
   validateUpdateIncidentInput,
+  validateNearbyIncidentsQuery,
 };

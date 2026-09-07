@@ -191,6 +191,31 @@ export default function AlertDetailsScreen({ route, navigation }) {
               <Image source={{ uri: fullImageUrl }} style={styles.evidenceImage} resizeMode="cover" />
             </View>
           )}
+
+          <TouchableOpacity
+            style={styles.verifyIncidentBtn}
+            onPress={() =>
+              navigation.navigate('IncidentDetails', {
+                id: alertData.incident_id,
+                incident: {
+                  id: alertData.incident_id,
+                  title: alertData.incident_title,
+                  description: alertData.incident_description,
+                  category: alertData.incident_category,
+                  severity: alertData.incident_severity,
+                  status: alertData.incident_status,
+                  image_url: alertData.incident_image_url,
+                  neighborhood_name: alertData.neighborhood_name,
+                  locality: alertData.locality,
+                  city: alertData.city,
+                  created_at: alertData.incident_created_at,
+                },
+              })
+            }
+            activeOpacity={0.8}
+          >
+            <Text style={styles.verifyIncidentBtnText}>🛡️ Community Verification & Incident Details →</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Emergency Assistance Actions (for HIGH & CRITICAL alerts) */}
@@ -433,5 +458,20 @@ const styles = StyleSheet.create({
   backBtnText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  verifyIncidentBtn: {
+    marginTop: 14,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyIncidentBtnText: {
+    color: theme.colors.primary,
+    fontSize: theme.typography.sizes.xs + 1,
+    fontWeight: '700',
   },
 });

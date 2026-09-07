@@ -477,4 +477,120 @@ describe('Module 3: Incident Reporting Test Suite', () => {
       assert.ok(res.body.data.image_url.startsWith('/uploads/incidents/'));
     });
   });
+
+  // -------------------------------------------------------------
+  // MAP-BASED ACTIVE INCIDENT VISUALIZATION TESTS (GET /api/incidents/nearby)
+  // -------------------------------------------------------------
+  describe('7. Map-Based Active Incident Visualization (GET /api/incidents/nearby)', () => {
+    let activeAccidentId = null;
+
+    before(async () => {
+      // Create a fresh active accident report by User A at Shivaji Nagar (16.9902, 73.3120)
+      const accidentRes = await request(app)
+        .post('/api/incidents')
+        .set('Authorization', `Bearer ${userAToken}`)
+        .send({
+          category: 'ACCIDENT',
+          title: 'Car collision near Shivaji Nagar Signal',
+          description: 'Two cars collided at the intersection. Traffic is slowed down.',
+          severity: 'HIGH',
+          latitude: 16.9902,
+          longitude: 73.3120,
+        });
+      assert.strictEqual(accidentRes.status, 201);
+      activeAccidentId = accidentRes.body.data.id;
+    });
+
+    test('Test 25: User B within the radius gets User A active incident on GET /api/incidents/nearby', async () => {
+      // User B is at Mandvi (~2.9 km away) -> query with 5 km radius
+      const res = await request(app)
+        .get('/api/incidents/nearby?latitude=16.9850&longitude=73.2850&radius=5000')
+        .set('Authorization', `Bearer ${userBToken}`);
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.body.success, true);
+      assert.ok(Array.isArray(res.body.data.incidents));
+      
+      const found = res.body.data.incidents.find((i) => i.id === activeAccidentId);
+      assert.ok(found, 'User B should see User A active incident');
+      assert.strictEqual(found.category, 'ACCIDENT');
+      assert.strictEqual(found.title, 'Car collision near Shivaji Nagar Signal');
+      assert.strictEqual(found.severity, 'HIGH');
+      assert.strictEqual(found.status, 'PENDING');
+      assert.ok(found.latitude);
+      assert.ok(found.longitude);
+      assert.ok(found.distance_meters > 0);
+    });
+
+    test('Test 26: User outside the radius does NOT see User A incident', async () => {
+      // Query from Mumbai (~230 km away from Ratnagiri) -> query with 5 km radius
+      const res = await request(app)
+        .get('/api/incidents/nearby?latitude=19.0760&longitude=72.8777&radius=5000')
+        .set('Authorization', `Bearer ${userBToken}`);
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.body.success, true);
+      const found = res.body.data.incidents.find((i) => i.id === activeAccidentId);
+      assert.strictEqual(found, undefined, 'User should NOT see incident outside radius');
+    });
+
+    test('Test 27: Strict Privacy - Nearby query must NEVER leak reporter identity or private coordinates', async () => {
+      const res = await request(app)
+        .get('/api/incidents/nearby?latitude=16.9902&longitude=73.3120&radius=2000')
+        .set('Authorization', `Bearer ${userBToken}`);
+
+      assert.strictEqual(res.status, 200);
+      assert.ok(res.body.data.incidents.length > 0);
+
+      for (const inc of res.body.data.incidents) {
+        assert.strictEqual(inc.reporter_id, undefined);
+        assert.strictEqual(inc.reporter_name, undefined);
+        assert.strictEqual(inc.reporter_email, undefined);
+        assert.strictEqual(inc.reporter_phone, undefined);
+        assert.strictEqual(inc.password, undefined);
+        assert.strictEqual(inc.password_hash, undefined);
+      }
+    });
+
+    test('Test 28: Cancelled incident does not appear on nearby incident map', async () => {
+      // Create and cancel an incident
+      const incRes = await request(app)
+        .post('/api/incidents')
+        .set('Authorization', `Bearer ${userAToken}`)
+        .send({
+          category: 'SUSPICIOUS_ACTIVITY',
+          title: 'Temporary Suspicious Activity',
+          description: 'Suspicious vehicle parked in alley.',
+          severity: 'LOW',
+          latitude: 16.9902,
+          longitude: 73.3120,
+        });
+      const tempId = incRes.body.data.id;
+
+      // Cancel it
+      await request(app)
+        .patch(`/api/incidents/${tempId}/cancel`)
+        .set('Authorization', `Bearer ${userAToken}`);
+
+      // Query nearby
+      const res = await request(app)
+        .get('/api/incidents/nearby?latitude=16.9902&longitude=73.3120&radius=2000')
+        .set('Authorization', `Bearer ${userBToken}`);
+
+      assert.strictEqual(res.status, 200);
+      const found = res.body.data.incidents.find((i) => i.id === tempId);
+      assert.strictEqual(found, undefined, 'Cancelled incident must not appear on map');
+    });
+
+    test('Test 29: Category & Severity filter support on GET /api/incidents/nearby', async () => {
+      const accidentOnlyRes = await request(app)
+        .get('/api/incidents/nearby?latitude=16.9902&longitude=73.3120&radius=5000&category=ACCIDENT')
+        .set('Authorization', `Bearer ${userBToken}`);
+
+      assert.strictEqual(accidentOnlyRes.status, 200);
+      for (const inc of accidentOnlyRes.body.data.incidents) {
+        assert.strictEqual(inc.category, 'ACCIDENT');
+      }
+    });
+  });
 });
