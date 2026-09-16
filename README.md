@@ -7,10 +7,10 @@ A mobile-first neighborhood safety and emergency alert system tailored for commu
 This project is planned across 10 progressive modules.
 
 - **Module 1 — User & Authentication Management** *(Implemented)*
-- Module 2 — Location & Neighborhood Management *(Future)*
-- Module 3 — Incident Reporting *(Future)*
-- Module 4 — Alert Management & Distribution *(Future)*
-- Module 5 — Community Verification *(Future)*
+- Module 2 — Location & Neighborhood Management *(Implemented)*
+- Module 3 — Incident Reporting *(Implemented)*
+- Module 4 — Alert Management & Distribution *(Implemented)*
+- Module 5 — Community Verification *(Implemented)*
 - Module 6 — AI Trust & Reliability Engine *(Future)*
 - Module 7 — Real-Time Communication & Notifications *(Future)*
 - Module 8 — Admin & Moderation *(Future)*
