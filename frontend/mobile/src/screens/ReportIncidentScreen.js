@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -44,6 +44,11 @@ export default function ReportIncidentScreen({ navigation }) {
   const [imageUri, setImageUri] = useState(null);
   const [photoPickerVisible, setPhotoPickerVisible] = useState(false);
 
+  // Web Camera streaming and capture state
+  const [webCameraVisible, setWebCameraVisible] = useState(false);
+  const videoRef = useRef(null);
+  const webStreamRef = useRef(null);
+
   const [coords, setCoords] = useState({ latitude: 16.9902, longitude: 73.3120, accuracy: 10 });
   const [areaName, setAreaName] = useState('Detecting current area...');
   const [locLoading, setLocLoading] = useState(true);
@@ -54,6 +59,24 @@ export default function ReportIncidentScreen({ navigation }) {
 
   useEffect(() => {
     fetchCurrentLocation();
+  }, []);
+
+  // Attach web stream to video element when modal is shown
+  useEffect(() => {
+    if (webCameraVisible && videoRef.current && webStreamRef.current) {
+      videoRef.current.srcObject = webStreamRef.current;
+      videoRef.current.play().catch((e) => console.warn('[Web Video Play Error]', e));
+    }
+  }, [webCameraVisible]);
+
+  // Clean up web camera stream on unmount
+  useEffect(() => {
+    return () => {
+      if (webStreamRef.current) {
+        webStreamRef.current.getTracks().forEach((track) => track.stop());
+        webStreamRef.current = null;
+      }
+    };
   }, []);
 
   const fetchCurrentLocation = async () => {
@@ -75,20 +98,50 @@ export default function ReportIncidentScreen({ navigation }) {
   };
 
   /**
-   * Capture photo using device Camera
+   * Capture photo using device Camera (Webcam on Web, Native Camera on Mobile)
    */
   const handleTakePhoto = async () => {
     setPhotoPickerVisible(false);
+
+    if (Platform.OS === 'web') {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        Alert.alert(
+          'Camera Access Unavailable',
+          'Camera access is unavailable. Please allow camera permission or use Select from Folder.'
+        );
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+        webStreamRef.current = stream;
+        setWebCameraVisible(true);
+      } catch (err) {
+        console.warn('[Web Camera Error]', err);
+        Alert.alert(
+          'Camera Access Unavailable',
+          'Camera access is unavailable. Please allow camera permission or use Select from Folder.'
+        );
+      }
+      return;
+    }
+
+    // Native Mobile Camera via Expo ImagePicker
     try {
-      if (Platform.OS !== 'web') {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            'Camera Permission Required',
-            'Please allow camera permission in your phone settings to capture real-time incident photos.'
-          );
-          return;
-        }
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Required',
+          'Please allow camera permission in your phone settings to capture real-time incident photos.'
+        );
+        return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
@@ -107,7 +160,41 @@ export default function ReportIncidentScreen({ navigation }) {
   };
 
   /**
-   * Choose photo from device Gallery / Library
+   * Close Web Camera stream cleanly
+   */
+  const handleCloseWebCamera = () => {
+    if (webStreamRef.current) {
+      webStreamRef.current.getTracks().forEach((track) => track.stop());
+      webStreamRef.current = null;
+    }
+    setWebCameraVisible(false);
+  };
+
+  /**
+   * Capture snapshot frame from Web Camera video element to canvas
+   */
+  const handleCaptureWebPhoto = () => {
+    if (!videoRef.current) return;
+    try {
+      const video = videoRef.current;
+      const width = video.videoWidth || 1280;
+      const height = video.videoHeight || 720;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      setImageUri(dataUrl);
+      handleCloseWebCamera();
+    } catch (err) {
+      console.error('[Web Capture Error]', err);
+      Alert.alert('Capture Error', 'Could not capture photo from webcam. Please try again.');
+    }
+  };
+
+  /**
+   * Choose photo from device Gallery / Folder
    */
   const handlePickFromGallery = async () => {
     setPhotoPickerVisible(false);
@@ -143,6 +230,11 @@ export default function ReportIncidentScreen({ navigation }) {
   };
 
   const handleResetForm = () => {
+    if (webStreamRef.current) {
+      webStreamRef.current.getTracks().forEach((track) => track.stop());
+      webStreamRef.current = null;
+    }
+    setWebCameraVisible(false);
     setTitle('');
     setDescription('');
     setCategory('ACCIDENT');
@@ -437,7 +529,9 @@ export default function ReportIncidentScreen({ navigation }) {
               >
                 <Text style={styles.photoOptionIcon}>📸</Text>
                 <Text style={styles.photoOptionTitle}>Take Photo</Text>
-                <Text style={styles.photoOptionSubtitle}>Use Phone Camera</Text>
+                <Text style={styles.photoOptionSubtitle}>
+                  {Platform.OS === 'web' ? 'Use Webcam' : 'Use Phone Camera'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -446,8 +540,12 @@ export default function ReportIncidentScreen({ navigation }) {
                 activeOpacity={0.8}
               >
                 <Text style={styles.photoOptionIcon}>🖼️</Text>
-                <Text style={styles.photoOptionTitle}>From Gallery</Text>
-                <Text style={styles.photoOptionSubtitle}>Choose Existing</Text>
+                <Text style={styles.photoOptionTitle}>
+                  {Platform.OS === 'web' ? 'Select File' : 'From Gallery'}
+                </Text>
+                <Text style={styles.photoOptionSubtitle}>
+                  {Platform.OS === 'web' ? 'Choose from Folder' : 'Choose Existing'}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -467,6 +565,64 @@ export default function ReportIncidentScreen({ navigation }) {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Web Live Camera Modal */}
+      {Platform.OS === 'web' && webCameraVisible ? (
+        <Modal
+          visible={webCameraVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={handleCloseWebCamera}
+        >
+          <View style={styles.webCameraOverlay}>
+            <View style={styles.webCameraContainer}>
+              <View style={styles.webCameraHeader}>
+                <Text style={styles.webCameraTitle}>📸 Live Camera Feed</Text>
+                <TouchableOpacity
+                  onPress={handleCloseWebCamera}
+                  style={styles.webCameraCloseBtn}
+                >
+                  <Text style={styles.webCameraCloseText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.webVideoWrapper}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: 8,
+                    backgroundColor: '#000000',
+                  }}
+                />
+              </View>
+
+              <View style={styles.webCameraControls}>
+                <TouchableOpacity
+                  style={styles.webCancelBtn}
+                  onPress={handleCloseWebCamera}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.webCancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.webCaptureBtn}
+                  onPress={handleCaptureWebPhoto}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.webCaptureBtnText}>📸 Capture Photo</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -893,5 +1049,81 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontSize: theme.typography.sizes.xs + 1,
     fontWeight: '600',
+  },
+
+  // Web Camera Modal Styles
+  webCameraOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  webCameraContainer: {
+    width: '100%',
+    maxWidth: 540,
+    backgroundColor: '#1E293B',
+    borderRadius: theme.borderRadius.lg,
+    padding: 16,
+    ...theme.shadows.card,
+  },
+  webCameraHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  webCameraTitle: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  webCameraCloseBtn: {
+    padding: 4,
+  },
+  webCameraCloseText: {
+    color: '#94A3B8',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  webVideoWrapper: {
+    width: '100%',
+    height: 320,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+    marginBottom: 16,
+  },
+  webCameraControls: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  webCancelBtn: {
+    backgroundColor: '#334155',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webCancelBtnText: {
+    color: '#CBD5E1',
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: '600',
+  },
+  webCaptureBtn: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.button,
+  },
+  webCaptureBtnText: {
+    color: '#FFFFFF',
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: '700',
   },
 });

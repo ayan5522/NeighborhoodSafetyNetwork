@@ -119,6 +119,14 @@ class IncidentService {
       logger.warn(`[IncidentService] Non-fatal alert generation error for incident ${createdIncident.id}: ${alertErr.message}`);
     }
 
+    // Automatically trigger Module 7 Step 2 Notification Generation for eligible nearby users
+    try {
+      const notificationService = require('./notificationService');
+      await notificationService.generateIncidentNearbyNotifications(createdIncident);
+    } catch (notifErr) {
+      logger.warn(`[IncidentService] Non-fatal notification generation error for incident ${createdIncident.id}: ${notifErr.message}`);
+    }
+
     return {
       success: true,
       statusCode: 201,

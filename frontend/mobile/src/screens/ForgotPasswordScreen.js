@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import authService from '../services/authService';
 import { theme } from '../styles/theme';
@@ -37,13 +38,27 @@ export default function ForgotPasswordScreen({ navigation }) {
         identifier: identifier.trim(),
       });
 
-      // Always navigate to OTP screen with generic message for privacy
+      // Navigate to OTP verification screen only if account exists and OTP is sent
       navigation.navigate('OTPVerification', {
         channel,
         identifier: identifier.trim(),
       });
     } catch (err) {
-      setErrorMessage(err.message);
+      const isUserNotFound =
+        err.statusCode === 404 ||
+        (err.message && (
+          err.message.includes('No account found') ||
+          err.message.includes("doesn't exist") ||
+          err.message.includes('not found')
+        ));
+
+      if (isUserNotFound) {
+        const notFoundMsg = "User doesn't exist in the system.";
+        setErrorMessage(notFoundMsg);
+        Alert.alert('Account Recovery', notFoundMsg);
+      } else {
+        setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

@@ -87,6 +87,12 @@ export default function MapScreen({ navigation }) {
       if (nearby) {
         setPerimeterData(nearby);
       }
+
+      // 3. Update active WebView markers if already mounted
+      if (webViewRef.current) {
+        const jsCode = `if (window.updateMapData) { window.updateMapData(${pos.latitude}, ${pos.longitude}, ${radius}, ${JSON.stringify(incidentList)}); }`;
+        webViewRef.current.injectJavaScript(jsCode);
+      }
     } catch (err) {
       console.warn('[MapScreen] Data fetch error:', err.message);
     }
@@ -124,8 +130,12 @@ export default function MapScreen({ navigation }) {
   };
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchInitialLocation();
+    });
     fetchInitialLocation();
-  }, []);
+    return unsubscribe;
+  }, [navigation]);
 
   // Web event listener for Leaflet postMessage
   useEffect(() => {
@@ -478,6 +488,7 @@ export default function MapScreen({ navigation }) {
           </View>
         ) : Platform.OS === 'web' ? (
           <iframe
+            key={`map_${coordinates.latitude}_${coordinates.longitude}_${radiusMeters}_${incidents.length}`}
             title="OpenStreetMap"
             srcDoc={leafletMapHtml}
             style={{ width: '100%', height: '100%', border: 'none' }}

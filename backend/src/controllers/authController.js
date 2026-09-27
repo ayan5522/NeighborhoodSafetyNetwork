@@ -65,6 +65,9 @@ class AuthController {
   async forgotPassword(req, res, next) {
     try {
       const result = await authService.forgotPassword(req.body);
+      if (!result.success) {
+        return apiError(res, result.statusCode, result.message);
+      }
       return apiSuccess(res, result.statusCode, result.message, result.data);
     } catch (err) {
       next(err);

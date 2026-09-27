@@ -15,13 +15,24 @@ export const incidentService = {
       formData.append('latitude', String(latitude));
       formData.append('longitude', String(longitude));
 
-      // Append image based on platform
-      const filename = imageUri.split('/').pop() || 'incident_photo.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1].toLowerCase()}` : 'image/jpeg';
+      // Normalize filename and MIME type
+      let filename = 'incident_photo.jpg';
+      if (typeof imageUri === 'string' && !imageUri.startsWith('data:')) {
+        const rawName = imageUri.split('/').pop()?.split('?')[0];
+        if (rawName) {
+          filename = rawName;
+        }
+      }
+
+      let ext = (filename.split('.').pop() || 'jpg').toLowerCase();
+      if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+        ext = 'jpg';
+        filename = `${filename}.${ext}`;
+      }
+      const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
       if (Platform.OS === 'web') {
-        // On web, if it's a blob/data URI or File object
+        // On web: fetch blob from data URL or blob URL
         try {
           const res = await fetch(imageUri);
           const blob = await res.blob();
@@ -30,17 +41,23 @@ export const incidentService = {
           console.warn('[IncidentService Web] Blob conversion fallback:', e);
         }
       } else {
+        const nativeUri =
+          Platform.OS === 'android' &&
+          !imageUri.startsWith('file://') &&
+          !imageUri.startsWith('content://')
+            ? `file://${imageUri}`
+            : imageUri;
+
         formData.append('image', {
-          uri: imageUri,
+          uri: nativeUri,
           name: filename,
-          type,
+          type: mimeType,
         });
       }
 
       const response = await apiClient.post('/incidents', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: Platform.OS === 'web' ? {} : { 'Content-Type': 'multipart/form-data' },
+        transformRequest: [(data) => data],
       });
       return response.data?.data || response.data;
     }

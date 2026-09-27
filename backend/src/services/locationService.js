@@ -123,6 +123,14 @@ class LocationService {
 
     logger.info(`User location updated: ${userId} (lat: ${lat.toFixed(4)}, lon: ${lng.toFixed(4)})`);
 
+    // Automatically synchronize/backfill active alerts for resident at new location
+    try {
+      const alertService = require('./alertService');
+      await alertService.syncActiveAlertsForUser(userId);
+    } catch (alertErr) {
+      logger.warn(`[LocationService] Alert sync failed for user ${userId}: ${alertErr.message}`);
+    }
+
     return {
       success: true,
       statusCode: 200,

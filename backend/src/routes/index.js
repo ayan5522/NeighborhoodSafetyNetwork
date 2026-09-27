@@ -6,6 +6,7 @@ const incidentRoutes = require('./incidentRoutes');
 const alertRoutes = require('./alertRoutes');
 const emergencyContactRoutes = require('./emergencyContactRoutes');
 const sosRoutes = require('./sosRoutes');
+const notificationRoutes = require('./notificationRoutes');
 const devRoutes = require('./devRoutes');
 const env = require('../config/env');
 
@@ -19,6 +20,7 @@ router.use('/incidents', incidentRoutes);
 router.use('/alerts', alertRoutes);
 router.use('/emergency-contacts', emergencyContactRoutes);
 router.use('/sos', sosRoutes);
+router.use('/notifications', notificationRoutes);
 
 // Development routes (enabled in non-production environments)
 if (env.NODE_ENV !== 'production') {

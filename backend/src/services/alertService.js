@@ -96,6 +96,81 @@ class AlertService {
   }
 
   /**
+   * Dynamically discover and generate alerts for currently active, unexpired incidents
+   * within the user's registered safety radius (e.g. upon login, location update, or alert feed fetch).
+   * Ensures newly logged-in or relocated residents receive alerts for existing active incidents.
+   */
+  async syncActiveAlertsForUser(userId) {
+    try {
+      const syncQuery = `
+        INSERT INTO alerts (
+          incident_id,
+          recipient_user_id,
+          priority,
+          status,
+          expires_at,
+          created_at,
+          updated_at
+        )
+        SELECT 
+          i.id,
+          $1::uuid,
+          CASE i.severity
+            WHEN 'CRITICAL' THEN 'URGENT'
+            WHEN 'HIGH' THEN 'HIGH'
+            WHEN 'MEDIUM' THEN 'NORMAL'
+            WHEN 'LOW' THEN 'LOW'
+            ELSE 'NORMAL'
+          END,
+          'ACTIVE',
+          i.created_at + (INTERVAL '1 hour' * CASE i.severity
+            WHEN 'CRITICAL' THEN 1
+            WHEN 'HIGH' THEN 3
+            WHEN 'MEDIUM' THEN 6
+            WHEN 'LOW' THEN 6
+            ELSE 6
+          END),
+          NOW(),
+          NOW()
+        FROM incidents i
+        JOIN user_locations ul ON ul.user_id = $1::uuid
+        JOIN users u ON u.id = $1::uuid
+        WHERE u.status = 'ACTIVE'
+          AND i.status IN ('PENDING', 'ACTIVE')
+          AND (i.created_at + (INTERVAL '1 hour' * CASE i.severity
+            WHEN 'CRITICAL' THEN 1
+            WHEN 'HIGH' THEN 3
+            WHEN 'MEDIUM' THEN 6
+            WHEN 'LOW' THEN 6
+            ELSE 6
+          END)) > NOW()
+          AND ST_DWithin(
+            ul.geom,
+            i.geom,
+            CASE i.severity
+              WHEN 'CRITICAL' THEN 5000
+              WHEN 'HIGH' THEN 3000
+              WHEN 'MEDIUM' THEN 2000
+              WHEN 'LOW' THEN 1000
+              ELSE 2000
+            END
+          )
+        ON CONFLICT (incident_id, recipient_user_id) DO NOTHING
+        RETURNING id
+      `;
+
+      const res = await db.query(syncQuery, [userId]);
+      if (res.rowCount > 0) {
+        logger.info(`[Alert Sync] Backfilled ${res.rowCount} active alerts for resident ${userId}`);
+      }
+      return res.rowCount;
+    } catch (err) {
+      logger.warn(`[Alert Sync Error] Failed to sync active alerts for user ${userId}: ${err.message}`);
+      return 0;
+    }
+  }
+
+  /**
    * Lazily expire overdue active alerts for a user
    */
   async expireOverdueAlerts(userId) {
@@ -117,7 +192,8 @@ class AlertService {
    * Retrieve resident alert feed with privacy masking and approximate distance
    */
   async getUserAlertFeed({ userId, status, unreadOnly = false, page = 1, limit = 20 }) {
-    // 1. Run lazy expiration update
+    // 1. Sync active alerts for resident and run lazy expiration update
+    await this.syncActiveAlertsForUser(userId);
     await this.expireOverdueAlerts(userId);
 
     const offset = (page - 1) * limit;
@@ -204,6 +280,7 @@ class AlertService {
    * Get single alert details (verifies user ownership and masks reporter identity)
    */
   async getAlertById({ alertId, userId }) {
+    await this.syncActiveAlertsForUser(userId);
     await this.expireOverdueAlerts(userId);
 
     const query = `
@@ -294,6 +371,7 @@ class AlertService {
    * Get unread active alert count for badge display
    */
   async getUnreadAlertCount({ userId }) {
+    await this.syncActiveAlertsForUser(userId);
     await this.expireOverdueAlerts(userId);
 
     const countQuery = `

@@ -387,7 +387,7 @@ describe('Module 1: User & Authentication Management Comprehensive Test Suite', 
     let resetOtp;
     let resetToken;
 
-    it('Test 24: should handle forgot password via Email with generic anti-enumeration response', async () => {
+    it('Test 24: should handle forgot password for registered Email and send OTP', async () => {
       const res = await request(app)
         .post('/api/auth/forgot-password')
         .send({
@@ -397,11 +397,29 @@ describe('Module 1: User & Authentication Management Comprehensive Test Suite', 
 
       assert.strictEqual(res.status, 200);
       assert.strictEqual(res.body.success, true);
-      assert.ok(res.body.message.includes('verification code has been dispatched'));
+      assert.ok(res.body.message.includes('Password reset verification code has been sent'));
       resetOtp = res.body.data?.dev_otp;
     });
 
-    it('Test 25: should handle forgot password via Mobile with generic anti-enumeration response', async () => {
+    it('Test 24b: should reject forgot password for unregistered Email with 404 and NO OTP', async () => {
+      const res = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({
+          channel: 'EMAIL',
+          identifier: 'nonexistent.user.2026@example.com',
+        });
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(res.body.success, false);
+      assert.strictEqual(res.body.message, "User doesn't exist in the system.");
+      assert.strictEqual(res.body.data, undefined);
+
+      // Verify no OTP was inserted for unregistered user
+      const dbCheck = await db.query("SELECT * FROM otp_verifications WHERE user_id = '00000000-0000-0000-0000-000000000000'");
+      assert.strictEqual(dbCheck.rows.length, 0);
+    });
+
+    it('Test 25: should handle forgot password for registered Mobile and send OTP', async () => {
       // Cooldown reset for test
       await db.query("UPDATE otp_verifications SET created_at = NOW() - INTERVAL '70 seconds' WHERE user_id = $1", [registeredUserId]);
 
@@ -414,8 +432,48 @@ describe('Module 1: User & Authentication Management Comprehensive Test Suite', 
 
       assert.strictEqual(res.status, 200);
       assert.strictEqual(res.body.success, true);
-      assert.ok(res.body.message.includes('verification code has been dispatched'));
+      assert.ok(res.body.message.includes('Password reset verification code has been sent'));
       resetOtp = res.body.data?.dev_otp;
+    });
+
+    it('Test 25b: should reject forgot password for unregistered Mobile with 404 and NO OTP', async () => {
+      const res = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({
+          channel: 'SMS',
+          identifier: '+919999999999',
+        });
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(res.body.success, false);
+      assert.strictEqual(res.body.message, "User doesn't exist in the system.");
+      assert.strictEqual(res.body.data, undefined);
+    });
+
+    it('Test 25c: should reject forgot password with invalid email format (400)', async () => {
+      const res = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({
+          channel: 'EMAIL',
+          identifier: 'abc',
+        });
+
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(res.body.success, false);
+      assert.ok(res.body.errors.some(e => e.includes('valid email')));
+    });
+
+    it('Test 25d: should reject forgot password with invalid mobile format (400)', async () => {
+      const res = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({
+          channel: 'SMS',
+          identifier: '12345',
+        });
+
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(res.body.success, false);
+      assert.ok(res.body.errors.some(e => e.includes('valid 10-digit Indian mobile number')));
     });
 
     it('Test 26: should reject invalid password reset OTP', async () => {

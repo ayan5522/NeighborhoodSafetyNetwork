@@ -10,6 +10,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import alertService from '../services/alertService';
+import locationService from '../services/locationService';
 import BottomNavBar from '../components/BottomNavBar';
 import { theme } from '../styles/theme';
 
@@ -39,6 +40,17 @@ export default function AlertsScreen({ navigation }) {
 
   const fetchAlerts = useCallback(async () => {
     try {
+      // 1. Sync location with backend PostGIS if possible to ensure latest radius coverage
+      try {
+        const pos = await locationService.getCurrentPosition();
+        if (pos) {
+          await locationService.syncLocationWithBackend(pos);
+        }
+      } catch (locErr) {
+        // Non-blocking for alert viewing
+      }
+
+      // 2. Fetch fresh resident alert feed
       const res = await alertService.getAlerts({
         unreadOnly: filterTab === 'UNREAD',
         limit: 30,
@@ -58,9 +70,13 @@ export default function AlertsScreen({ navigation }) {
   }, [filterTab]);
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchAlerts();
+    });
     setLoading(true);
     fetchAlerts();
-  }, [fetchAlerts]);
+    return unsubscribe;
+  }, [navigation, fetchAlerts]);
 
   const onRefresh = () => {
     setRefreshing(true);

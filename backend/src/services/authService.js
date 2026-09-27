@@ -278,9 +278,9 @@ class AuthService {
 
     if (!user) {
       return {
-        success: true,
-        statusCode: 200,
-        message: 'If an active account exists with the provided contact information, a verification code has been dispatched.',
+        success: false,
+        statusCode: 404,
+        message: "User doesn't exist in the system.",
       };
     }
 
@@ -388,13 +388,15 @@ class AuthService {
   }
 
   /**
-   * Request password reset code via Email or SMS (anti-enumeration generic response).
+   * Request password reset code via Email or SMS.
+   * Verifies that the recovery credential belongs to an existing registered user.
    */
   async forgotPassword({ channel, identifier }) {
     let user;
     const cleanId = (identifier || '').trim();
     if (channel === OTP_CHANNELS.EMAIL) {
-      const res = await db.query('SELECT * FROM users WHERE email = $1', [cleanId.toLowerCase()]);
+      const cleanEmail = cleanId.toLowerCase();
+      const res = await db.query('SELECT * FROM users WHERE email = $1', [cleanEmail]);
       user = res.rows[0];
     } else {
       const cleanMobile = normalizeIndianMobile(cleanId) || cleanId;
@@ -402,14 +404,20 @@ class AuthService {
       user = res.rows[0];
     }
 
-    const genericResponse = {
-      success: true,
-      statusCode: 200,
-      message: 'If an active account exists with the provided contact information, a verification code has been dispatched.',
-    };
+    if (!user) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "User doesn't exist in the system.",
+      };
+    }
 
-    if (!user || user.status === USER_STATUS.SUSPENDED) {
-      return genericResponse;
+    if (user.status === USER_STATUS.SUSPENDED) {
+      return {
+        success: false,
+        statusCode: 403,
+        message: 'Your account has been suspended. Please contact support.',
+      };
     }
 
     const otpResult = await otpService.generateAndSendOTP({
@@ -419,14 +427,29 @@ class AuthService {
       channel,
     });
 
+    if (!otpResult.success) {
+      return {
+        success: false,
+        statusCode: otpResult.code === 'COOLDOWN_ACTIVE' ? 429 : 400,
+        message: otpResult.message,
+        cooldownRemaining: otpResult.cooldownRemaining,
+      };
+    }
+
+    const response = {
+      success: true,
+      statusCode: 200,
+      message: `Password reset verification code has been sent to your registered ${channel === OTP_CHANNELS.EMAIL ? 'email address' : 'mobile number'}.`,
+    };
+
     if (env.NODE_ENV !== 'production' && otpResult.devOtp) {
-      genericResponse.data = {
+      response.data = {
         user_id: user.id,
         dev_otp: otpResult.devOtp,
       };
     }
 
-    return genericResponse;
+    return response;
   }
 
   /**
@@ -447,8 +470,8 @@ class AuthService {
     if (!user) {
       return {
         success: false,
-        statusCode: 400,
-        message: 'Invalid verification code or user.',
+        statusCode: 404,
+        message: "User doesn't exist in the system.",
       };
     }
 

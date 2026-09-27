@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import alertService from '../services/alertService';
+import locationService from '../services/locationService';
 import BottomNavBar from '../components/BottomNavBar';
 import { theme } from '../styles/theme';
 
@@ -25,17 +26,32 @@ export default function HomeScreen({ navigation }) {
     } catch (e) {}
   };
 
+  const initializeHomeScreen = async () => {
+    try {
+      // 1. Initialize and sync resident location with backend PostGIS
+      const pos = await locationService.getCurrentPosition();
+      if (pos) {
+        await locationService.syncLocationWithBackend(pos);
+      }
+    } catch (e) {
+      console.warn('[HomeScreen] Location sync notice:', e.message);
+    } finally {
+      // 2. Fetch unread alert count (backend sync will have prepared active alerts)
+      await fetchUnreadCount();
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchUnreadCount();
+      initializeHomeScreen();
     });
-    fetchUnreadCount();
+    initializeHomeScreen();
     return unsubscribe;
   }, [navigation]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchUnreadCount();
+    await initializeHomeScreen();
     setRefreshing(false);
   };
 

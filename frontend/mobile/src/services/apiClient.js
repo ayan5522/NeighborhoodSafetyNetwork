@@ -42,7 +42,7 @@ const apiClient = axios.create({
   },
 });
 
-// Request Interceptor: Automatically attach JWT
+// Request Interceptor: Automatically attach JWT & handle FormData
 apiClient.interceptors.request.use(
   async (config) => {
     try {
@@ -53,6 +53,19 @@ apiClient.interceptors.request.use(
     } catch (err) {
       console.warn('[ApiClient] Failed to attach auth token:', err);
     }
+
+    // When sending FormData (e.g. image uploads), prevent axios from fixing Content-Type as application/json
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (Platform.OS === 'web') {
+        // In Web/Browser, deleting Content-Type lets browser assign multipart/form-data with boundary
+        delete config.headers['Content-Type'];
+      } else {
+        // In React Native mobile, specify multipart/form-data
+        config.headers['Content-Type'] = 'multipart/form-data';
+      }
+      config.transformRequest = [(data) => data];
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
